@@ -1,0 +1,6 @@
+/var/www/subdomains.mysite1.com/landing-page/mysite1.com/
+/var/www/subdomains.mysite2.com/wordpress/mysite2.com/public_html
+/var/www/mysite3.com/public_html/smsint/public
+/var/www/subdomains.other-site.com/opencart3/other_site.com/
+/var/www/subdomains.another-site.com/opencart3/another-site.com/
+

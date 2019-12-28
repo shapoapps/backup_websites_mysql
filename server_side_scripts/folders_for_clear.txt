@@ -1,0 +1,5 @@
+/var/www/mysite1.com/data/www/temp_files/photos/ready
+/var/www/mysite1.com/data/www/temp_files/downloads/ready
+ 
+/var/www/mysite2.com/data/www/temp_files/sessions
+/var/www/mysite3.com/data/www/temp
