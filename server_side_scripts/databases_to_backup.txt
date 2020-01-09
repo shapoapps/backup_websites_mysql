@@ -1,4 +1,4 @@
-demo.easycrm
-demo.op3nospeed
-demo.wpnospeed
-demo.wpspeed
+demo_easycrm
+demo_op3nospeed
+demo_wpnospeed
+demo_wpspeed

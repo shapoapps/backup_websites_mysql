@@ -3,15 +3,19 @@
 
 #MySQL backup user data
 MYSQLUSER='mysql_user'
-MYSQLPASSWORD='password'
+MYSQLPASSWORD='mysql_password'
 
 #How much days we store backups
-DAYS_TO_KEEP_BACKUPS_ON_SERVER=7
+DAYS_TO_KEEP_BACKUPS_ON_SERVER=4
 
 
 
 #Array of sites names
 sites_array=(/mysite1.com/ /mysite2.com/ /mysite3.com/)
+
+
+#Databases backup flag, if flag = 1, script take databases names from text file databases_to_backup.txt , if flag = 2 script backup all databases
+DB_MODE_FLAG=2
 
 
 
@@ -26,23 +30,115 @@ FOLDERS=$CURDIR/files_to_backup.txt
 DATABASES=$CURDIR/databases_to_backup.txt
 
 
+#File to store logs folders skeleton
+FOLDERS_STRUCTURE_TO_STORE=$CURDIR/folders_skeleton.txt
+
+
 #Folder to store archived backups
 
 #Files folder
-ARCHIVED_FILES_FOLDER=$CURDIR/backup
+ARCHIVED_FILES_FOLDER=/backups_server
 
 #Databases folder
-ARCHIVED_DATABASES_FOLDER=$CURDIR/backup_bd
+ARCHIVED_DATABASES_FOLDER=/backups_server
+
+
 
 
 #Clear temporary folder before first run
-rm -r -f $CURDIR/temp_folder
+rm -r -f /tmp/temp_folder
+
+
+mkdir /tmp/temp_folder
+mkdir /tmp/temp_folder/settings
+mkdir /tmp/temp_folder/files
+mkdir /tmp/temp_folder/databases
 
 
 
-mkdir $CURDIR/temp_folder
-mkdir $CURDIR/temp_folder/files
-mkdir $CURDIR/temp_folder/databases
+
+
+
+
+#Archiving folders skeleton
+#Current date, time
+
+
+while read -r folders_skeleton;
+do
+
+    #Check for backspaces
+    if [ "${#folders_skeleton}" -lt 5 ] || [ -z "$folders_skeleton" ] ; 
+    then
+	      echo "Skipping path: $folders_skeleton"
+	      continue
+    fi
+
+    #Check is path for archivation exists
+    if [ ! -d $folders_skeleton ]; then
+	      echo "Path does not exist."
+        continue
+    fi
+
+
+    find $folders_skeleton -type d >> /tmp/temp_folder/settings/skeleton_of_folders.txt
+
+done < "$FOLDERS_STRUCTURE_TO_STORE"
+
+
+
+#Export system settings
+
+#export crontab rules
+crontab -l > /tmp/temp_folder/settings/crontab.bak
+
+#Export list of all installed programs in system with their versions
+sudo dpkg -l > /tmp/temp_folder/settings/allinstalledprogs.txt
+
+
+#Export network settings
+echo "------------------------------------***********------------------------------------" > /tmp/temp_folder/settings/networkinterfaces.txt
+echo "command: ip link show" >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "" >> /tmp/temp_folder/settings/networkinterfaces.txt
+ip link show >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "------------------------------------***********------------------------------------" >> /tmp/temp_folder/settings/networkinterfaces.txt
+
+echo "command: netstat -i" >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "" >> /tmp/temp_folder/settings/networkinterfaces.txt
+netstat -i >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "------------------------------------***********------------------------------------" >> /tmp/temp_folder/settings/networkinterfaces.txt
+
+echo "command: ifconfig" >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "" >> /tmp/temp_folder/settings/networkinterfaces.txt
+ifconfig  >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "------------------------------------***********------------------------------------" >> /tmp/temp_folder/settings/networkinterfaces.txt
+
+echo "command: ip r" >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "" >> /tmp/temp_folder/settings/networkinterfaces.txt
+ip r >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "------------------------------------***********------------------------------------" >> /tmp/temp_folder/settings/networkinterfaces.txt
+
+echo "command: netstat -ntlpu" >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "" >> /tmp/temp_folder/settings/networkinterfaces.txt
+netstat -ntlpu >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "------------------------------------***********------------------------------------" >> /tmp/temp_folder/settings/networkinterfaces.txt
+
+echo "command: ufw status numbered" >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "" >> /tmp/temp_folder/settings/networkinterfaces.txt
+ufw status numbered >> /tmp/temp_folder/settings/networkinterfaces.txt
+echo "------------------------------------***********------------------------------------" >> /tmp/temp_folder/settings/networkinterfaces.txt
+
+
+#Export nginx settings
+nginx -V 2>&1 | tee /tmp/temp_folder/settings/nginx_settings.txt
+php -m > /tmp/temp_folder/settings/php_extensions_installed.txt
+
+tar cvpzf $ARCHIVED_FILES_FOLDER/$(date +"%d.%m.%y--%H-%M-%S")-settings-backup.tar.gz /tmp/temp_folder/settings/
+
+
+
+
+
 
 
 while read -r line; 
@@ -57,13 +153,10 @@ do
 
     #Check is path for archivation exists
     if [ ! -d $line ]; then
-	      echo "Path does not exist."
+	echo "Path does not exist."
         continue
     fi
 
-
-    #Current date, time
-    date=$(date +"%d.%m.%y--%H-%M-%S")
 
     ARCHIVE_READY=2
 
@@ -76,13 +169,14 @@ do
           echo $line
           SITE_FILENAME="${i//\//$''}"
 
-          rsync -a $line $CURDIR/temp_folder/files
-          zip -r $ARCHIVED_FILES_FOLDER/$date-$SITE_FILENAME-backup.zip $CURDIR/temp_folder/files/
+          rsync -a $line /tmp/temp_folder/files
+
+	  tar cvpzf $ARCHIVED_FILES_FOLDER/$(date +"%d.%m.%y--%H-%M-%S")-$SITE_FILENAME-backup.tar.gz /tmp/temp_folder/files
 
           #Delete temporary folder
-          rm -r -f $CURDIR/temp_folder/files
+          rm -r -f /tmp/temp_folder/files
 
-          mkdir $CURDIR/temp_folder/files
+          mkdir /tmp/temp_folder/files
           ARCHIVE_READY=1
         else
           echo "overlap not found"
@@ -91,13 +185,15 @@ do
 
     if [ "$ARCHIVE_READY" -ne 1 ];
     then
-	    rsync -a $line $CURDIR/temp_folder/files
-	    zip -r $ARCHIVED_FILES_FOLDER/$date-undefined_site-backup.zip $CURDIR/temp_folder/files/
+	    rsync -a $line /tmp/temp_folder/files
+	    
+	    tar cvpzf $ARCHIVED_FILES_FOLDER/$(date +"%d.%m.%y--%H-%M-%S")-undefined_site-backup.tar.gz /tmp/temp_folder/files
+	    
 
 	    #Delete temporary folder
-	    rm -r -f $CURDIR/temp_folder/files
+	    rm -r -f /tmp/temp_folder/files
 
-	    mkdir $CURDIR/temp_folder/files
+	    mkdir /tmp/temp_folder/files
 	    ARCHIVE_READY=1
     fi
 
@@ -106,35 +202,59 @@ done < "$FOLDERS"
 
 
 
-while read -r line; 
-do
-    #Check for backspaces
-    if [ "${#line}" -lt 2 ] || [ -z "$line" ] ; 
-    then
+
+
+if [ "$DB_MODE_FLAG" -eq 1 ] ;
+then
+    #Backup databases defined in txt file
+    while read -r line; 
+    do
+	#Check for backspaces
+	if [ "${#line}" -lt 2 ] || [ -z "$line" ] ; 
+	then
 	    echo "Skipping database: $line"
 	    continue
-    fi
+	fi
 
-    mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD --databases $line > $CURDIR/temp_folder/databases/$line.sql
+	mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD --databases $line > /tmp/temp_folder/databases/$line.sql
 
-done < "$DATABASES"
+    done < "$DATABASES"
+else
+    #Backup all databases
+
+    databases=`mysql -u $MYSQLUSER -p$MYSQLPASSWORD -e "SHOW DATABASES;" | tr -d "|" | grep -v Database`
+
+    for db in $databases; do
+
+	if [ $db == 'information_schema' ] || [ $db == 'performance_schema' ] || [ $db == 'mysql' ] || [ $db == 'sys' ]; then
+	    echo "Skipping database: $db"
+	    continue
+	fi
+
+	mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD --databases $db > /tmp/temp_folder/databases/$db.sql
+
+    done
+
+fi
 
 
 
 #Backup users, users permissions on databases
-mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql user > $CURDIR/temp_folder/databases/user_table_dump.sql
-mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql db > $CURDIR/temp_folder/databases/db_table_dump.sql
-mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql tables_priv > $CURDIR/temp_folder/databases/tables_priv_table_dump.sql
-mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql columns_priv > $CURDIR/temp_folder/databases/columns_priv_table_dump.sql
-mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql procs_priv > $CURDIR/temp_folder/databases/procs_priv_table_dump.sql
+mysql -u $MYSQLUSER -p$MYSQLPASSWORD --skip-column-names -A -e"SELECT CONCAT('SHOW GRANTS FOR ''',user,'''@''',host,''';') FROM mysql.user WHERE user<>''" | mysql -u $MYSQLUSER -p$MYSQLPASSWORD --skip-column-names -A | sed 's/$/;/g' > /tmp/temp_folder/databases/MySQLUserGrants.sql
+mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql user > /tmp/temp_folder/databases/user_table_dump.sql
+mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql db > /tmp/temp_folder/databases/db_table_dump.sql
+mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql tables_priv > /tmp/temp_folder/databases/tables_priv_table_dump.sql
+mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql columns_priv > /tmp/temp_folder/databases/columns_priv_table_dump.sql
+mysqldump -u $MYSQLUSER -p$MYSQLPASSWORD mysql procs_priv > /tmp/temp_folder/databases/procs_priv_table_dump.sql
 
 
-#Archiving databases (zip must be installed in system)
-zip -r $ARCHIVED_DATABASES_FOLDER/$date-databases-backup.zip $CURDIR/temp_folder/databases/
+#Archiving databases 
+tar cvpzf $ARCHIVED_DATABASES_FOLDER/$(date +"%d.%m.%y--%H-%M-%S")-databases-backup.tar.gz /tmp/temp_folder/databases/
+
 
 
 #Delete temporary folder 
-rm -r -f $CURDIR/temp_folder
+rm -r -f /tmp/temp_folder
 
 
 

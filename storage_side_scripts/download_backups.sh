@@ -1,11 +1,10 @@
 #!/bin/bash
 
 
-ARCHIVED_REMOTE_FOLDER_FILES='/myscripts/backup/'
-ARCHIVED_REMOTE_FOLDER_DATABASES='/myscripts/backup_bd/'
+ARCHIVED_REMOTE_FOLDER_FILES='/backups_server'
 
-LOCAL_FILES_PATH='/backups/files'
-LOCAL_DATABASES_PATH='/backups/databases'
+LOCAL_FILES_PATH='/backups/my_development_server'
+
 
 SSH_CONNECTION_NAME='connection_to_my_vps'
 
@@ -16,7 +15,6 @@ if ping -q -c 1 -W 1 8.8.8.8 >/dev/null; then
     #Internet is up, downloading backups from our servers
 
     rsync -avh -e ssh $SSH_CONNECTION_NAME:$ARCHIVED_REMOTE_FOLDER_FILES $LOCAL_FILES_PATH
-    rsync -avh -e ssh $SSH_CONNECTION_NAME:$ARCHIVED_REMOTE_FOLDER_DATABASES $LOCAL_DATABASES_PATH
 
     echo "" >> $CURDIR/downloadbackups.log
     echo "Internet is up, downloading backups $date" >> $CURDIR/downloadbackups.log
