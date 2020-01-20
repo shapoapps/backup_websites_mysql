@@ -169,7 +169,7 @@ do
           echo $line
           SITE_FILENAME="${i//\//$''}"
 
-          rsync -a $line /tmp/temp_folder/files
+          rsync -a -R $line /tmp/temp_folder/files
 
 	  tar cvpzf $ARCHIVED_FILES_FOLDER/$(date +"%d.%m.%y--%H-%M-%S")-$SITE_FILENAME-backup.tar.gz /tmp/temp_folder/files
 
@@ -185,7 +185,7 @@ do
 
     if [ "$ARCHIVE_READY" -ne 1 ];
     then
-	    rsync -a $line /tmp/temp_folder/files
+	    rsync -a -R $line /tmp/temp_folder/files
 	    
 	    tar cvpzf $ARCHIVED_FILES_FOLDER/$(date +"%d.%m.%y--%H-%M-%S")-undefined_site-backup.tar.gz /tmp/temp_folder/files
 	    
